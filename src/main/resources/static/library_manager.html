@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản Lý Thư Viện</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+    table, th, td {
+      border: 1px solid #ddd;
+    }
+    th, td {
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .form-container {
+      margin: 20px 0;
+      padding: 20px;
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .form-container input, select {
+      padding: 10px;
+      margin: 5px 0;
+      width: calc(100% - 22px);
+      box-sizing: border-box;
+    }
+    .form-container button {
+      padding: 10px 20px;
+      margin: 10px 0;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .form-container button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+<h1>Quản Lý Thư Viện</h1>
+
+<!-- Thêm Sách -->
+<div class="form-container">
+  <h2>Thêm hoặc Cập Nhật Sách</h2>
+  <input type="hidden" id="bookId" />
+  <label for="title">Tiêu đề:</label>
+  <input type="text" id="title" placeholder="Nhập tiêu đề sách" />
+  <label for="author">Tác giả:</label>
+  <input type="text" id="author" placeholder="Nhập tác giả" />
+  <label for="category">Thể loại:</label>
+  <input type="text" id="category" placeholder="Nhập thể loại" />
+  <label for="status">Trạng thái:</label>
+  <select id="status">
+    <option value="AVAILABLE">AVAILABLE</option>
+    <option value="BORROWED">BORROWED</option>
+  </select>
+  <button onclick="addOrUpdateBook()">Lưu</button>
+</div>
+
+<!-- Thêm Độc Giả -->
+<div class="form-container">
+  <h2>Thêm hoặc Cập Nhật Độc Giả</h2>
+  <input type="hidden" id="readerId" />
+  <label for="readerName">Tên Độc Giả:</label>
+  <input type="text" id="readerName" placeholder="Nhập tên độc giả" />
+  <label for="readerEmail">Email:</label>
+  <input type="email" id="readerEmail" placeholder="Nhập email độc giả" />
+  <button onclick="addOrUpdateReader()">Lưu Độc Giả</button>
+</div>
+
+<!-- Mượn Sách -->
+<div class="form-container">
+  <h2>Mượn Sách</h2>
+  <label for="borrowerReaderId">Độc giả ID:</label>
+  <input type="number" id="borrowerReaderId" placeholder="Nhập ID độc giả" />
+  <label for="borrowerBookId">Sách ID:</label>
+  <input type="number" id="borrowerBookId" placeholder="Nhập ID sách" />
+  <button onclick="borrowBook()">Mượn Sách</button>
+</div>
+
+<h2>Danh Sách Sách</h2>
+<table>
+  <thead>
+  <tr>
+    <th>ID</th>
+    <th>Tiêu đề</th>
+    <th>Tác giả</th>
+    <th>Thể loại</th>
+    <th>Trạng thái</th>
+    <th>Hành động</th>
+  </tr>
+  </thead>
+  <tbody id="bookTable">
+  </tbody>
+</table>
+
+<h2>Danh Sách Độc Giả</h2>
+<table>
+  <thead>
+  <tr>
+    <th>ID</th>
+    <th>Tên Độc Giả</th>
+    <th>Email</th>
+    <th>Hành động</th>
+  </tr>
+  </thead>
+  <tbody id="readerTable">
+  </tbody>
+</table>
+
+<h2>Danh Sách Mượn Sách</h2>
+<table>
+  <thead>
+  <tr>
+    <th>ID</th>
+    <th>Độc Giả</th>
+    <th>Sách</th>
+    <th>Ngày Mượn</th>
+    <th>Hành động</th>
+  </tr>
+  </thead>
+  <tbody id="borrowerTable">
+  </tbody>
+</table>
+
+<script>
+  const API_BASE_URL = "http://localhost:8080/api";
+  const BOOK_API_URL = `${API_BASE_URL}/books`;
+  const READER_API_URL = `${API_BASE_URL}/readers`;
+  const BORROWER_API_URL = `${API_BASE_URL}/bookborrowers`;
+
+  // Lấy danh sách sách
+  function getBooks() {
+    fetch(BOOK_API_URL)
+    .then(response => response.json())
+    .then(data => {
+      const table = document.getElementById("bookTable");
+      table.innerHTML = "";
+      data.forEach(book => {
+        const row = `
+                            <tr>
+                                <td>${book.id}</td>
+                                <td>${book.title}</td>
+                                <td>${book.author}</td>
+                                <td>${book.category}</td>
+                                <td>${book.status}</td>
+                                <td>
+                                    <button onclick="editBook(${book.id})">Sửa</button>
+                                    <button onclick="deleteBook(${book.id})">Xóa</button>
+                                </td>
+                            </tr>
+                        `;
+        table.innerHTML += row;
+      });
+    });
+  }
+
+  // Lấy danh sách độc giả
+  function getReaders() {
+    fetch(READER_API_URL)
+    .then(response => response.json())
+    .then(data => {
+      const table = document.getElementById("readerTable");
+      table.innerHTML = "";
+      data.forEach(reader => {
+        const row = `
+                            <tr>
+                                <td>${reader.id}</td>
+                                <td>${reader.name}</td>
+                                <td>${reader.email}</td>
+                                <td>
+                                    <button onclick="editReader(${reader.id})">Sửa</button>
+                                    <button onclick="deleteReader(${reader.id})">Xóa</button>
+                                </td>
+                            </tr>
+                        `;
+        table.innerHTML += row;
+      });
+    });
+  }
+
+  // Lấy danh sách mượn sách
+  function getBorrowers() {
+    fetch(BORROWER_API_URL)
+    .then(response => response.json())
+    .then(data => {
+      const table = document.getElementById("borrowerTable");
+      table.innerHTML = "";
+      data.forEach(borrower => {
+        borrower.borrowDate = Date;
+        const row = `
+                            <tr>
+                                <td>${borrower.id}</td>
+                                <td>${borrower.readerId}</td>
+                                <td>${borrower.bookId}</td>
+                                <td>${borrower.borrowDate}</td>
+                                <td>
+                                    <button onclick="deleteBorrower(${borrower.id})">Xóa</button>
+                                </td>
+                            </tr>
+                        `;
+        table.innerHTML += row;
+      });
+    });
+  }
+
+  // Thêm hoặc cập nhật sách
+  function addOrUpdateBook() {
+    const id = document.getElementById("bookId").value;
+    const book = {
+      title: document.getElementById("title").value,
+      author: document.getElementById("author").value,
+      category: document.getElementById("category").value,
+      status: document.getElementById("status").value
+    };
+
+    const method = id ? "PUT" : "POST";
+    const url = id ? `${BOOK_API_URL}/${id}` : BOOK_API_URL;
+
+    fetch(url, {
+      method: method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(book)
+    }).then(() => {
+      getBooks();
+      clearForm();
+    });
+  }
+
+  // Thêm hoặc cập nhật độc giả
+  function addOrUpdateReader() {
+    const id = document.getElementById("readerId").value;
+    const reader = {
+      name: document.getElementById("readerName").value,
+      email: document.getElementById("readerEmail").value
+    };
+
+    const method = id ? "PUT" : "POST";
+    const url = id ? `${READER_API_URL}/${id}` : READER_API_URL;
+
+    fetch(url, {
+      method: method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reader)
+    }).then(() => {
+      getReaders();
+      clearReaderForm();
+    });
+  }
+
+  // Mượn sách
+  function borrowBook() {
+    const borrower = {
+      readerId: document.getElementById("borrowerReaderId").value,
+      bookId: document.getElementById("borrowerBookId").value
+    };
+
+    fetch(BORROWER_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(borrower)
+    }).then(() => {
+      getBorrowers();
+      clearBorrowerForm();
+    });
+  }
+
+  // Sửa sách
+  function editBook(id) {
+    fetch(`${BOOK_API_URL}/${id}`)
+    .then(response => response.json())
+    .then(book => {
+      document.getElementById("bookId").value = book.id;
+      document.getElementById("title").value = book.title;
+      document.getElementById("author").value = book.author;
+      document.getElementById("category").value = book.category;
+      document.getElementById("status").value = book.status;
+    });
+  }
+
+  // Sửa độc giả
+  function editReader(id) {
+    fetch(`${READER_API_URL}/${id}`)
+    .then(response => response.json())
+    .then(reader => {
+      document.getElementById("readerId").value = reader.id;
+      document.getElementById("readerName").value = reader.name;
+      document.getElementById("readerEmail").value = reader.email;
+    });
+  }
+
+  // Xóa sách
+  function deleteBook(id) {
+    fetch(`${BOOK_API_URL}/${id}`, { method: "DELETE" }).then(() => getBooks());
+  }
+
+  // Xóa độc giả
+  function deleteReader(id) {
+    fetch(`${READER_API_URL}/${id}`, { method: "DELETE" }).then(() => getReaders());
+  }
+
+  // Xóa mượn sách
+  function deleteBorrower(id) {
+    fetch(`${BORROWER_API_URL}/${id}`, { method: "DELETE" }).then(() => getBorrowers());
+  }
+
+  // Xóa form sách
+  function clearForm() {
+    document.getElementById("bookId").value = "";
+    document.getElementById("title").value = "";
+    document.getElementById("author").value = "";
+    document.getElementById("category").value = "";
+    document.getElementById("status").value = "AVAILABLE";
+  }
+
+  // Xóa form độc giả
+  function clearReaderForm() {
+    document.getElementById("readerId").value = "";
+    document.getElementById("readerName").value = "";
+    document.getElementById("readerEmail").value = "";
+  }
+
+  // Xóa form mượn sách
+  function clearBorrowerForm() {
+    document.getElementById("borrowerReaderId").value = "";
+    document.getElementById("borrowerBookId").value = "";
+  }
+
+  // Lấy dữ liệu ban đầu
+  getBooks();
+  getReaders();
+  getBorrowers();
+</script>
+</body>
+</html>
